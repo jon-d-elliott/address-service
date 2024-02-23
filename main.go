@@ -141,14 +141,26 @@ func createAddress(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Address created with id: " + addressId})
-
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Deleted"})
 
 }
 
+func deleteAddress(c *gin.Context) {
+	customerId := c.Query("customerId")
+	addressId := c.Param("addressId")
+	if customerId == ""{
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message:": "Customer Id not provided"})
+		return
+	}
+
+	delete(addressMap[customerId], addressId)
+
+}
 func main() {
 	router := gin.Default()
 	router.GET("/addresses", getCustomerAddresses)
 	router.GET("/addresses/addressId/:addressId", getAddressById)
 	router.POST("/addresses", createAddress)
+	router.DELETE("/addresses/addressId/:addressId", deleteAddress)
 	router.Run("localhost:8080")
 }
