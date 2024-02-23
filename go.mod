@@ -1,4 +1,4 @@
-module github.com/JonDElliott/go/address-service
+module github.com/jon-d-elliott/address-service
 
 go 1.22.0
 
