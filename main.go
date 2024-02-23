@@ -7,34 +7,6 @@ import (
 	"net/http"
 )
 
-type address struct {
-	Name       string `json:"name,omitempty"`
-	Number     string `json:"number,omitempty"`
-	StreetName string `json:"streetName"`
-	Locality   string `json:"locality"`
-	PostTown   string `json:"postTown"`
-	PostCode   string `json:"postCode"`
-}
-
-type createAddressRequest struct {
-	CustomerId string `json:"customerId`
-	Name       string `json:"name,omitempty"`
-	Number     string `json:"number,omitempty"`
-	StreetName string `json:"streetName"`
-	Locality   string `json:"locality"`
-	PostTown   string `json:"postTown"`
-	PostCode   string `json:"postCode"`
-}
-
-type getCustomerAddressesResponse struct {
-	AddressId  string `json:"addressId"`
-	Name       string `json:"name,omitempty"`
-	Number     string `json:"number,omitempty"`
-	StreetName string `json:"streetName"`
-	Locality   string `json:"locality"`
-	PostTown   string `json:"postTown"`
-	PostCode   string `json:"postCode"`
-}
 
 var addressMap = map[string]map[string]address{
 	"1": {
@@ -154,13 +126,38 @@ func deleteAddress(c *gin.Context) {
 	}
 
 	delete(addressMap[customerId], addressId)
+}
+
+func updateAddress(c *gin.Context) {
+	customerId := c.Query("customerId")
+	addressId := c.Param("addressId")
+
+	var theAddress address
+
+	if customerId == ""{
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message:": "Customer Id not provided"})
+		return
+	}
+
+	if err := c.BindJSON(&theAddress); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	addressMap[customerId][addressId] = theAddress
+
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Updated"})
+
+
 
 }
+
 func main() {
 	router := gin.Default()
 	router.GET("/addresses", getCustomerAddresses)
 	router.GET("/addresses/addressId/:addressId", getAddressById)
 	router.POST("/addresses", createAddress)
 	router.DELETE("/addresses/addressId/:addressId", deleteAddress)
+	router.PUT("/addresses/addressId/:addressId", updateAddress)
 	router.Run("localhost:8080")
 }
