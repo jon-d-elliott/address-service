@@ -7,32 +7,17 @@ import (
 	"net/http"
 )
 
-
-var addressMap = map[string]map[string]address{
-	"1": {
-		"1": {
-			Name:       "Wychbury",
-			Number:     "24",
-			StreetName: "Yarnborough Hill",
-			Locality:   "Stourbridge",
-			PostTown:   "Oldswinford",
-			PostCode:   "DY8 2EB",
-		},
-		"2": {
-			Number:     "34",
-			StreetName: "Hampton Drive",
-			Locality:   "Telford",
-			PostTown:   "Newport",
-			PostCode:   "TF10 7RE",
-		},
-	},
-}
+var addressMap = make(map[string]map[string]address)
 
 func getCustomerAddresses(c *gin.Context) {
 	customerId := c.Query("customerId")
 
 	if customerId == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "customer id not supplied"})
+		errorResp := errorResponse{
+			Code:        "0001",
+			Description: "customer id is mandatory",
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResp)
 		return
 	}
 	var custAddresses []getCustomerAddressesResponse
@@ -56,20 +41,33 @@ func getCustomerAddresses(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, custAddresses)
 		return
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no addresses found for customer : " + customerId})
+	errorResp := errorResponse{
+		Code:        "0002",
+		Description: "Addresses not found.",
+	}
+
+	c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 }
 
 func getAddressById(c *gin.Context) {
 	customerId := c.Query("customerId")
 	if customerId == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "customer id not supplied"})
+		errorResp := errorResponse{
+			Code:        "0001",
+			Description: "customer id is mandatory",
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorResp)
 		return
 	}
 
 	addressId := c.Param("addressId")
 	theAddress, exists := addressMap[customerId][addressId]
 	if !exists {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Address not found"})
+		errorResp := errorResponse{
+			Code:        "0002",
+			Description: "Address not found.",
+		}
+		c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 		return
 	}
 
@@ -79,9 +77,13 @@ func getAddressById(c *gin.Context) {
 func createAddress(c *gin.Context) {
 	var request createAddressRequest
 
-
 	if err := c.BindJSON(&request); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Error(err)
+		errorResp := errorResponse{
+			Code:        "0004",
+			Description: "Invalid request : " + err.Error(),
+		}
+		c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 		return
 	}
 
@@ -92,36 +94,42 @@ func createAddress(c *gin.Context) {
 	if exists {
 
 		addMap[addressId] = address{
-			Name: request.Name,
-			Number: request.Number,
+			Name:       request.Name,
+			Number:     request.Number,
 			StreetName: request.StreetName,
-			Locality: request.Locality,
-			PostTown: request.PostTown,
-			PostCode: request.PostCode,
-			}
-	}else {
+			Locality:   request.Locality,
+			PostTown:   request.PostTown,
+			PostCode:   request.PostCode,
+		}
+	} else {
 		addressMap[customerId] = map[string]address{
 			addressId: {
-				Name: request.Name,
-				Number: request.Number,
+				Name:       request.Name,
+				Number:     request.Number,
 				StreetName: request.StreetName,
-				Locality: request.Locality,
-				PostTown: request.PostTown,
-				PostCode: request.PostCode,
+				Locality:   request.Locality,
+				PostTown:   request.PostTown,
+				PostCode:   request.PostCode,
 			},
 		}
 	}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Address created with id: " + addressId})
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Deleted"})
+	resp := createAddressResponse{
+		AddressId: addressId,
+	}
 
+	c.IndentedJSON(http.StatusOK, resp)
 }
 
 func deleteAddress(c *gin.Context) {
 	customerId := c.Query("customerId")
 	addressId := c.Param("addressId")
-	if customerId == ""{
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message:": "Customer Id not provided"})
+	if customerId == "" {
+		errorResp := errorResponse{
+			Code:        "0001",
+			Description: "Customer id is mandatory",
+		}
+		c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 		return
 	}
 
@@ -134,21 +142,28 @@ func updateAddress(c *gin.Context) {
 
 	var theAddress address
 
-	if customerId == ""{
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message:": "Customer Id not provided"})
+	if customerId == "" {
+		errorResp := errorResponse{
+			Code:        "0001",
+			Description: "Customer id is mandatory",
+		}
+		c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 		return
 	}
 
 	if err := c.BindJSON(&theAddress); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Error(err)
+		errorResp := errorResponse{
+			Code:        "0004",
+			Description: "Invalid request : " + err.Error(),
+			}
+			c.AbortWithStatusJSON(http.StatusNotFound, errorResp)
 		return
 	}
 
 	addressMap[customerId][addressId] = theAddress
 
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Updated"})
-
-
+	c.IndentedJSON(http.StatusNoContent, nil)
 
 }
 
@@ -159,5 +174,5 @@ func main() {
 	router.POST("/addresses", createAddress)
 	router.DELETE("/addresses/addressId/:addressId", deleteAddress)
 	router.PUT("/addresses/addressId/:addressId", updateAddress)
-	router.Run("localhost:8080")
+	router.Run("localhost:8082")
 }

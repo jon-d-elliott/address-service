@@ -28,3 +28,12 @@ type getCustomerAddressesResponse struct {
 	PostTown   string `json:"postTown"`
 	PostCode   string `json:"postCode"`
 }
+
+type createAddressResponse struct {
+	AddressId string `json:"addressId"`
+}
+
+type errorResponse struct {
+	Code string `json:"code"`
+	Description string `json:"description"`
+}
